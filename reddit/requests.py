@@ -38,17 +38,8 @@ def remove_posts_by_title(posts: List[Dict], exclude_text: str) -> List[Dict]:
     """
     return [post for post in posts if exclude_text.lower() not in post['title'].lower()]
 
-def fetch_today_posts(subreddit: str = "notebooklm", tz_str: str = "UTC") -> List[Dict]:
-    tz = ZoneInfo(tz_str)
-    today = datetime.now(tz)
-
-    data = fetch_reddit_new_posts(subreddit)
-    if not data:
-        return []
-
-    try:
-        posts = data['data']['children']
-        return filter_posts_by_date(posts, today, tz)
-    except KeyError as e:
-        print(f"Error accessing post data: {e}", file=sys.stderr)
-        return []
+def remove_unanswered(posts: List[Dict]) -> List[Dict]:
+    """
+    Remove posts that contain a question mark in the title and have zero comments.
+    """
+    return [post for post in posts if not post['num_comments'] == 0]
