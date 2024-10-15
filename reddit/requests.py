@@ -32,11 +32,11 @@ def filter_posts_by_date(posts: List[Dict], target_date: datetime, tz: ZoneInfo)
             filtered_posts.append(post['data'])
     return filtered_posts
 
-def remove_posts_by_title(posts: List[Dict], exclude_text: str) -> List[Dict]:
+def remove_posts_by_title(posts: List[Dict], exclude_phrases: List[str]) -> List[Dict]:
     """
-    Remove posts whose titles contain the specified text (case-insensitive).
+    Remove posts whose titles contain any of the specified phrases (case-insensitive).
     """
-    return [post for post in posts if exclude_text.lower() not in post['title'].lower()]
+    return [post for post in posts if not any(phrase.lower() in post['title'].lower() for phrase in exclude_phrases)]
 
 def remove_unanswered(posts: List[Dict]) -> List[Dict]:
     """

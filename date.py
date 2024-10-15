@@ -9,6 +9,7 @@ def parse_arguments() -> argparse.Namespace:
     parser.add_argument("--timezone", default="UTC", help="Timezone name (e.g., America/New_York, Europe/London)")
     parser.add_argument("--subreddit", default="notebooklm", help="Subreddit name to fetch posts from")
     parser.add_argument("--date", help="Date to fetch posts for (YYYY-MM-DD). If not provided, uses current date in the specified timezone.")
+    parser.add_argument("--remove", nargs='*', help="List of phrases to remove from post titles")
     return parser.parse_args()
 
 def get_target_date(args: argparse.Namespace, tz: ZoneInfo) -> datetime:
@@ -16,9 +17,10 @@ def get_target_date(args: argparse.Namespace, tz: ZoneInfo) -> datetime:
         return datetime.strptime(args.date, "%Y-%m-%d").replace(tzinfo=tz)
     return datetime.now(tz)
 
-def process_posts(posts: List[Dict], target_date: datetime, tz: ZoneInfo) -> List[Dict]:
+def process_posts(posts: List[Dict], target_date: datetime, tz: ZoneInfo, remove_phrases: List[str] = None) -> List[Dict]:
     filtered_posts = filter_posts_by_date(posts, target_date, tz)
-    filtered_posts = remove_posts_by_title(filtered_posts, "deep dive")
+    if remove_phrases:
+        filtered_posts = remove_posts_by_title(filtered_posts, remove_phrases)
     return remove_unanswered(filtered_posts)
 
 def print_posts(filtered_posts: List[Dict], date_str: str, timezone: str, subreddit: str) -> None:
@@ -39,7 +41,7 @@ def main() -> None:
     data = fetch_reddit_new_posts(args.subreddit)
     if data and 'data' in data and 'children' in data['data']:
         posts = data['data']['children']
-        filtered_posts = process_posts(posts, target_date, tz)
+        filtered_posts = process_posts(posts, target_date, tz, args.remove)
         date_str = target_date.strftime("%Y-%m-%d")
         print_posts(filtered_posts, date_str, args.timezone, args.subreddit)
     else:
