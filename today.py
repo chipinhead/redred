@@ -1,5 +1,5 @@
 import argparse
-from reddit.requests import fetch_today_posts
+from reddit.requests import fetch_today_posts, remove_posts_by_title
 
 def main():
     parser = argparse.ArgumentParser(description="Fetch today's posts from a specified subreddit")
@@ -9,8 +9,11 @@ def main():
 
     posts = fetch_today_posts(subreddit=args.subreddit, tz_str=args.timezone)
     
-    print(f"Posts created today in {args.timezone} from r/{args.subreddit}:")
-    for post in posts:
+    # Remove posts with "deep dive" in the title
+    filtered_posts = remove_posts_by_title(posts, "deep dive")
+    
+    print(f"Posts created today in {args.timezone} from r/{args.subreddit} (excluding 'deep dive' posts):")
+    for post in filtered_posts:
         print(f"- {post['title']}")
         print(f"  Author: {post['author']}")
         print(f"  URL: {post['url']}")

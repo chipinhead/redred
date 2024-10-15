@@ -32,6 +32,12 @@ def filter_posts_by_date(posts: List[Dict], target_date: datetime, tz: ZoneInfo)
             filtered_posts.append(post['data'])
     return filtered_posts
 
+def remove_posts_by_title(posts: List[Dict], exclude_text: str) -> List[Dict]:
+    """
+    Remove posts whose titles contain the specified text (case-insensitive).
+    """
+    return [post for post in posts if exclude_text.lower() not in post['title'].lower()]
+
 def fetch_today_posts(subreddit: str = "notebooklm", tz_str: str = "UTC") -> List[Dict]:
     tz = ZoneInfo(tz_str)
     today = datetime.now(tz)
