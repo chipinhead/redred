@@ -1,8 +1,10 @@
 import argparse
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from typing import List, Dict
-from reddit.requests import fetch_reddit_new_posts, filter_posts_by_date, remove_posts_by_title, remove_unanswered
+from typing import List, Dict, Any
+import json
+from reddit.requests import fetch_reddit_new_posts, fetch_reddit_data, filter_posts_by_date, remove_posts_by_title, remove_unanswered
+from reddit.post import clean_reddit_object
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Fetch posts from a specified subreddit for a given date")
@@ -17,21 +19,37 @@ def get_target_date(args: argparse.Namespace, tz: ZoneInfo) -> datetime:
         return datetime.strptime(args.date, "%Y-%m-%d").replace(tzinfo=tz)
     return datetime.now(tz)
 
+def fetch_and_clean_post(url: str) -> Dict[str, Any]:
+    json_url = url.rstrip('/') + '.json'
+    post_data = fetch_reddit_data(json_url)
+    if post_data:
+        return clean_reddit_object(post_data)
+    return {}
+
 def process_posts(posts: List[Dict], target_date: datetime, tz: ZoneInfo, remove_phrases: List[str] = None) -> List[Dict]:
     filtered_posts = filter_posts_by_date(posts, target_date, tz)
     if remove_phrases:
         filtered_posts = remove_posts_by_title(filtered_posts, remove_phrases)
-    return remove_unanswered(filtered_posts)
-
-def print_posts(filtered_posts: List[Dict], date_str: str, timezone: str, subreddit: str) -> None:
-    print(f"Posts for {date_str} in {timezone} from r/{subreddit} (excluding 'deep dive' posts and unanswered questions):")
+    filtered_posts = remove_unanswered(filtered_posts)
+    
+    cleaned_posts = []
     for post in filtered_posts:
-        print(f"- {post['title']}")
-        print(f"  Author: {post['author']}")
-        print(f"  URL: {post['url']}")
-        print(f"  Score: {post['score']}")
-        print(f"  Comments: {post['num_comments']}")
-        print()
+        cleaned_post = fetch_and_clean_post(post['url'])
+        if cleaned_post:
+            cleaned_posts.append(cleaned_post)
+    
+    return cleaned_posts
+
+def save_posts_to_json(posts: List[Dict], subreddit: str, date_str: str) -> None:
+    filename = f"/data/{subreddit}_{date_str}.json"
+    data = {
+        "subreddit": subreddit,
+        "date": date_str,
+        "data": posts
+    }
+    with open(filename, 'w', encoding='utf-8') as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+    print(f"Saved posts to {filename}")
 
 def main() -> None:
     args = parse_arguments()
@@ -43,7 +61,12 @@ def main() -> None:
         posts = data['data']['children']
         filtered_posts = process_posts(posts, target_date, tz, args.remove)
         date_str = target_date.strftime("%Y-%m-%d")
-        print_posts(filtered_posts, date_str, args.timezone, args.subreddit)
+        
+        if filtered_posts:
+            save_posts_to_json(filtered_posts, args.subreddit, date_str)
+            print(f"Processed and saved {len(filtered_posts)} posts for {date_str} in {args.timezone} from r/{args.subreddit}")
+        else:
+            print(f"No posts found for {date_str} in {args.timezone} from r/{args.subreddit}")
     else:
         print(f"No posts found or error occurred while fetching posts from r/{args.subreddit}")
 
