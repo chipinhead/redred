@@ -1,0 +1,10 @@
+version: '3'
+
+services:
+  fetch:
+    build: .
+    volumes:
+      - ./:/app
+      - ./data:/data
+    command: tail -f /dev/null
+
