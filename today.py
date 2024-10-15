@@ -1,32 +1,17 @@
-import requests
-from datetime import datetime, timezone
-import sys
-
-def fetch_today_posts():
-    url = "https://www.reddit.com/r/notebooklm/new.json"
-    headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
-    }
-
-    try:
-        response = requests.get(url, headers=headers)
-        response.raise_for_status()
-        data = response.json()
-
-        today = datetime.now(timezone.utc).date()
-
-        print("Posts created today:")
-        for post in data['data']['children']:
-            created_utc = post['data']['created_utc']
-            post_date = datetime.fromtimestamp(created_utc, tz=timezone.utc).date()
-            
-            if post_date == today:
-                print(f"- {post['data']['title']}")
-
-    except requests.RequestException as e:
-        print(f"Error fetching data: {e}", file=sys.stderr)
-    except (KeyError, ValueError) as e:
-        print(f"Error parsing data: {e}", file=sys.stderr)
+import argparse
+from reddit.requests import fetch_today_posts
 
 if __name__ == "__main__":
-    fetch_today_posts()
+    parser = argparse.ArgumentParser(description="Fetch today's posts from r/notebooklm")
+    parser.add_argument("--timezone", default="UTC", help="Three-letter timezone code (e.g., PST, EST)")
+    args = parser.parse_args()
+
+    posts = fetch_today_posts(args.timezone)
+    
+    print(f"Posts created today in {args.timezone}:")
+    for post in posts:
+        print(f"- {post['title']}")
+        print(f"  Author: {post['author']}")
+        print(f"  URL: {post['url']}")
+        print(f"  Score: {post['score']}")
+        print()
