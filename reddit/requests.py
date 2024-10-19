@@ -1,8 +1,8 @@
 import requests
-from datetime import datetime, timezone
 import sys
-from zoneinfo import ZoneInfo
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
+from reddit.post import clean_reddit_object
+
 
 def fetch_reddit_data(url: str) -> Optional[Dict]:
     headers = {
@@ -21,25 +21,34 @@ def fetch_reddit_data(url: str) -> Optional[Dict]:
 
 def fetch_reddit_new_posts(subreddit: str) -> Optional[Dict]:
     url = f"https://www.reddit.com/r/{subreddit}/new.json"
-    return fetch_reddit_data(url)
+    data = fetch_reddit_data(url)
+    return data['data']['children']
 
-def filter_posts_by_date(posts: List[Dict], target_date: datetime, tz: ZoneInfo) -> List[Dict]:
-    filtered_posts = []
-    for post in posts:
-        created_utc = post['data']['created_utc']
-        post_date = datetime.fromtimestamp(created_utc, tz=timezone.utc).astimezone(tz).date()
-        if post_date == target_date.date():
-            filtered_posts.append(post['data'])
-    return filtered_posts
+def fetch_reddit_search_posts(query: str, subreddit: Optional[str] = None) -> Optional[Dict]:
+    # https://www.reddit.com/search.json?q=jobs
+    # https://www.reddit.com/r/AI_Agents/search.json?q=jobs&restrict_sr=1
 
-def remove_posts_by_title(posts: List[Dict], exclude_phrases: List[str]) -> List[Dict]:
-    """
-    Remove posts whose titles contain any of the specified phrases (case-insensitive).
-    """
-    return [post for post in posts if not any(phrase.lower() in post['title'].lower() for phrase in exclude_phrases)]
+    if subreddit:
+        url = f"https://www.reddit.com/r/{subreddit}/search.json?q={query}&restrict_sr=1"   
+    else:
+        url = f"https://www.reddit.com/search.json?q={query}"
+        
+    data = fetch_reddit_data(url)
+    return data['data']['children']
+def fetch_and_clean_objects(url: str) -> Dict[str, Any]:
+    json_url = url.rstrip('/') + '.json'
+    post_data = fetch_reddit_data(json_url)
+    
+    if post_data:
+        return clean_reddit_object(post_data)
+    return []
 
-def remove_unanswered(posts: List[Dict]) -> List[Dict]:
-    """
-    Remove posts that contain a question mark in the title and have zero comments.
-    """
-    return [post for post in posts if not post['num_comments'] == 0]
+def fetch_posts(urls: List[str]) -> List[Dict]:
+    cleaned_posts = []
+   
+    for url in urls:
+        cleaned_post = fetch_and_clean_objects(url)
+        if cleaned_post:
+            cleaned_posts.append({"post": cleaned_post[0], "comments": cleaned_post[1:]})
+    
+    return cleaned_posts
