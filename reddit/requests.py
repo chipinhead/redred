@@ -1,7 +1,7 @@
 import requests
 import sys
 from typing import List, Dict, Optional, Any
-from reddit.post import clean_reddit_object
+from reddit.cleaners.post import clean_reddit_object
 
 
 def fetch_reddit_data(url: str) -> Optional[Dict]:
@@ -35,6 +35,7 @@ def fetch_reddit_search_posts(query: str, subreddit: Optional[str] = None) -> Op
         
     data = fetch_reddit_data(url)
     return data['data']['children']
+    
 def fetch_and_clean_objects(url: str) -> Dict[str, Any]:
     json_url = url.rstrip('/') + '.json'
     post_data = fetch_reddit_data(json_url)
