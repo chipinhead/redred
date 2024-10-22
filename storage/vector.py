@@ -17,9 +17,11 @@ def add_documents(content: Dict):
     with db_session() as session:
         existing_content = session.query(RedditContent).filter(RedditContent.source_id == content["source_id"]).first()
         if existing_content:
-            print(f"Content with source_id {content['source_id']} was already added. Skipping.")
             return
-            
+
+    if content["type"] == "post":
+        print(f"Storing Post: {content['title']}")
+
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=3096, chunk_overlap=128)
     chunks = text_splitter.split_text(content["body"])
 

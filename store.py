@@ -12,6 +12,8 @@ def process_reddit_data(json_file_path):
     for item in data:
         # Normalize the data
         normalized_data = normalize_reddit_data(item)
+        if not normalized_data:
+            continue
 
         # Add the normalized data to the vector store
         add_documents(normalized_data)
