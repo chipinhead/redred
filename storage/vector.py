@@ -3,6 +3,10 @@ from langchain.schema import Document
 from typing import List, Dict
 from .db import get_vector_store
 from llm.model import embedding
+from langchain.chat_models import ChatOpenAI
+from langchain.chains import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.prompts import ChatPromptTemplate
 
 def add_documents(content: Dict):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=3096, chunk_overlap=128)
@@ -37,15 +41,27 @@ def add_documents(content: Dict):
     # Add documents to the vector store
     vector_store.add_documents(documents)
 
-def ask(query: str) -> List[Dict]:
+async def ask(query: str) -> str:
+    # Get the vector store
     vector_store = get_vector_store("reddit_content")
-    results = vector_store.similarity_search_with_score(query, k=5)
     
-    return [
-        {
-            "content": result[0].page_content,
-            "metadata": result[0].metadata,
-            "similarity": result[1]
-        }
-        for result in results
-    ]
+    # Create a retriever
+    retriever = vector_store.as_retriever()
+
+    # Create the language model with a specific model name
+    llm = ChatOpenAI(model_name="gpt-4o-mini")
+
+    # Create a prompt template
+    prompt = ChatPromptTemplate.from_template("""Answer the following question based only on the provided context:
+
+    Context: {context}
+
+    Question: {input}
+
+    Answer: """)
+
+    combine_docs_chain = create_stuff_documents_chain(llm, prompt)
+    retrieval_chain = create_retrieval_chain(retriever, combine_docs_chain)    # Invoke the chain
+    response = await retrieval_chain.ainvoke({"input": query})
+    
+    return response["answer"]

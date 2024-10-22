@@ -19,6 +19,7 @@ services:
       OPENAI_API_KEY: ${OPENAI_API_KEY}
       DB_HOST: ${DB_HOST}
       OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL}
+      OPENAI_MODEL: ${OPENAI_MODEL}
   vectordb:
     image: pgvector/pgvector:pg17
     environment:
