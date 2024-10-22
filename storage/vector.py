@@ -1,14 +1,25 @@
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.schema import Document
 from typing import List, Dict
-from .db import get_vector_store
+from .db import get_vector_store, db_session
 from llm.model import embedding
 from langchain_openai import ChatOpenAI
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.prompts import ChatPromptTemplate
+from app.models import RedditContent
+from datetime import datetime
+
+
 
 def add_documents(content: Dict):
+    # Check if RedditContent with the same source_id already exists
+    with db_session() as session:
+        existing_content = session.query(RedditContent).filter(RedditContent.source_id == content["source_id"]).first()
+        if existing_content:
+            print(f"Content with source_id {content['source_id']} was already added. Skipping.")
+            return
+            
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=3096, chunk_overlap=128)
     chunks = text_splitter.split_text(content["body"])
 
@@ -37,7 +48,11 @@ def add_documents(content: Dict):
     vector_store = get_vector_store("reddit_content")
     
     # Add documents to the vector store
+    print(f"Adding {content['source_id']} documents to the vector store")
     vector_store.add_documents(documents)
+
+    # Log documents to the database
+    log_documents(documents)
 
 def ask(query: str) -> str:
     # Get the vector store
@@ -65,3 +80,26 @@ def ask(query: str) -> str:
     response = retrieval_chain.invoke({"input": query})
     
     return response["answer"]
+
+def log_documents(documents: List[Document]):
+    with db_session() as session:
+        for doc in documents:
+            # Convert the 'created' timestamp to a datetime object
+            created_datetime = datetime.fromtimestamp(doc.metadata["created"])
+            
+            content = RedditContent(
+                source_id=doc.metadata["source_id"],
+                chunk_id=doc.metadata["chunk_id"],
+                type=doc.metadata["type"],
+                title=doc.metadata.get("title"),
+                body=doc.page_content,
+                subreddit=doc.metadata["subreddit"],
+                permalink=doc.metadata["permalink"],
+                url=doc.metadata.get("url"),
+                parent_id=doc.metadata.get("parent_id"),
+                created=created_datetime,  # Use the converted datetime
+                ups=doc.metadata.get("ups"),
+                downs=doc.metadata.get("downs"),
+                score=doc.metadata.get("score")
+            )
+            session.add(content)
