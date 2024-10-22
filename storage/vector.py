@@ -1,99 +1,51 @@
-from langchain.embeddings import OpenAIEmbeddings
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-import psycopg2
-import os
-from config.db import DB_CONNECTION_STRING
+from langchain.schema import Document
+from typing import List, Dict
+from .db import get_vector_store
+from llm.model import embedding
 
-OPENAI_EMBEDDING_MODEL = os.environ.get("OPENAI_EMBEDDING_MODEL")
-OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
-DB_HOST = os.environ.get("DB_HOST")
-DB_PORT = os.environ.get("DB_PORT")
-DB_NAME = os.environ.get("DB_NAME")
-DB_USER = os.environ.get("DB_USER")
-DB_PASSWORD = os.environ.get("DB_PASSWORD")
-
-embedding_model = OpenAIEmbeddings(model=OPENAI_EMBEDDING_MODEL, openai_api_key=OPENAI_API_KEY)
-
-from dataclasses import dataclass
-from typing import Optional, List, Tuple
-
-@dataclass
-class RedditContent:
-    id: int
-    source_id: str
-    chunk_id: str
-    type: str
-    title: Optional[str]
-    body: str
-    subreddit: str
-    permalink: str
-    url: Optional[str]
-    parent_id: Optional[str]
-    created: float
-    ups: Optional[int]
-    downs: Optional[int]
-    score: Optional[int]
-    embedding: List[float]
-
-@dataclass
-class ScoredRedditContent:
-    content: RedditContent
-    similarity: float
-
-def add_documents(content):
-    conn = psycopg2.connect(DB_CONNECTION_STRING)
-    cursor = conn.cursor()
+def add_documents(content: Dict):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=3096, chunk_overlap=128)
     chunks = text_splitter.split_text(content["body"])
 
+    documents = []
     for i, chunk in enumerate(chunks):
-        chunk_embedding = embedding_model.embed_query(chunk)
         chunk_id = f"{content['source_id']}_chunk_{i + 1}"
+        doc = Document(
+            page_content=chunk,
+            metadata={
+                "source_id": content["source_id"],
+                "chunk_id": chunk_id,
+                "type": content["type"],
+                "title": content.get("title"),
+                "body": chunk,
+                "subreddit": content["subreddit"],
+                "permalink": content["permalink"],
+                "url": content.get("url"),
+                "parent_id": content.get("parent_id"),
+                "created": content["created"],
+                "ups": content.get("ups"),
+                "downs": content.get("downs"),
+                "score": content.get("score"),
+            }
+        )
+        
+        documents.append(doc)
 
-        sql = """
-            INSERT INTO reddit_content (
-                source_id, chunk_id, type, title, body, subreddit, permalink, url, parent_id, created, ups, downs, score, embedding
-            ) VALUES (
-                %s, %s, %s, %s, %s, %s, %s, %s, %s, to_timestamp(%s), %s, %s, %s, %s
-            )
-        """
+    vector_store = get_vector_store("reddit_content")
+    
+    # Add documents to the vector store
+    vector_store.add_documents(documents)
 
-        cursor.execute(sql, (
-            content["source_id"],
-            chunk_id,
-            content["type"],
-            content.get("title"),
-            chunk,
-            content["subreddit"],
-            content["permalink"],
-            content.get("url"),
-            content.get("parent_id"),
-            content["created"],  # This is now expected to be a Unix timestamp
-            content.get("ups"),
-            content.get("downs"),
-            content.get("score"),
-            chunk_embedding,
-        ))
-
-    # Commit changes
-    conn.commit()
-    cursor.close()
-    conn.close()
-
-def ask(query) -> List[ScoredRedditContent]:
-    conn = psycopg2.connect(DB_CONNECTION_STRING)
-    cursor = conn.cursor()
-    query_embedding = embedding_model.embed_query(query)
-    # Perform vector similarity search
-    with conn.cursor() as cursor:
-        sql = """
-        SELECT *, 1 - (embedding <-> %s::vector) as similarity
-        FROM reddit_content
-        ORDER BY embedding <-> %s::vector
-        LIMIT 5
-        """
-        cursor.execute(sql, (query_embedding, query_embedding))
-        results = cursor.fetchall()
-
-    # Convert tuple results to ScoredRedditContent objects
-    return [ScoredRedditContent(RedditContent(*result[:-1]), result[-1]) for result in results]
+def ask(query: str) -> List[Dict]:
+    vector_store = get_vector_store("reddit_content")
+    results = vector_store.similarity_search_with_score(query, k=5)
+    
+    return [
+        {
+            "content": result[0].page_content,
+            "metadata": result[0].metadata,
+            "similarity": result[1]
+        }
+        for result in results
+    ]
