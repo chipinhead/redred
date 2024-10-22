@@ -14,6 +14,32 @@ DB_PASSWORD = os.environ.get("DB_PASSWORD")
 
 embedding_model = OpenAIEmbeddings(model=OPENAI_EMBEDDING_MODEL, openai_api_key=OPENAI_API_KEY)
 
+from dataclasses import dataclass
+from typing import Optional, List, Tuple
+
+@dataclass
+class RedditContent:
+    id: int
+    source_id: str
+    chunk_id: str
+    type: str
+    title: Optional[str]
+    body: str
+    subreddit: str
+    permalink: str
+    url: Optional[str]
+    parent_id: Optional[str]
+    created: float
+    ups: Optional[int]
+    downs: Optional[int]
+    score: Optional[int]
+    embedding: List[float]
+
+@dataclass
+class ScoredRedditContent:
+    content: RedditContent
+    similarity: float
+
 def add_documents(content):
     conn = psycopg2.connect(DB_CONNECTION_STRING)
     cursor = conn.cursor()
@@ -53,3 +79,21 @@ def add_documents(content):
     conn.commit()
     cursor.close()
     conn.close()
+
+def ask(query) -> List[ScoredRedditContent]:
+    conn = psycopg2.connect(DB_CONNECTION_STRING)
+    cursor = conn.cursor()
+    query_embedding = embedding_model.embed_query(query)
+    # Perform vector similarity search
+    with conn.cursor() as cursor:
+        sql = """
+        SELECT *, 1 - (embedding <-> %s::vector) as similarity
+        FROM reddit_content
+        ORDER BY embedding <-> %s::vector
+        LIMIT 5
+        """
+        cursor.execute(sql, (query_embedding, query_embedding))
+        results = cursor.fetchall()
+
+    # Convert tuple results to ScoredRedditContent objects
+    return [ScoredRedditContent(RedditContent(*result[:-1]), result[-1]) for result in results]
