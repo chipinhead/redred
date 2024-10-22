@@ -3,7 +3,7 @@ from langchain.schema import Document
 from typing import List, Dict
 from .db import get_vector_store
 from llm.model import embedding
-from langchain.chat_models import ChatOpenAI
+from langchain_openai import ChatOpenAI
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.prompts import ChatPromptTemplate
@@ -22,7 +22,6 @@ def add_documents(content: Dict):
                 "chunk_id": chunk_id,
                 "type": content["type"],
                 "title": content.get("title"),
-                "body": chunk,
                 "subreddit": content["subreddit"],
                 "permalink": content["permalink"],
                 "url": content.get("url"),
@@ -33,7 +32,6 @@ def add_documents(content: Dict):
                 "score": content.get("score"),
             }
         )
-        
         documents.append(doc)
 
     vector_store = get_vector_store("reddit_content")
@@ -41,7 +39,7 @@ def add_documents(content: Dict):
     # Add documents to the vector store
     vector_store.add_documents(documents)
 
-async def ask(query: str) -> str:
+def ask(query: str) -> str:
     # Get the vector store
     vector_store = get_vector_store("reddit_content")
     
@@ -61,7 +59,9 @@ async def ask(query: str) -> str:
     Answer: """)
 
     combine_docs_chain = create_stuff_documents_chain(llm, prompt)
-    retrieval_chain = create_retrieval_chain(retriever, combine_docs_chain)    # Invoke the chain
-    response = await retrieval_chain.ainvoke({"input": query})
+    retrieval_chain = create_retrieval_chain(retriever, combine_docs_chain)
+    
+    # Invoke the chain
+    response = retrieval_chain.invoke({"input": query})
     
     return response["answer"]

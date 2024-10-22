@@ -1,5 +1,5 @@
 import os
-from langchain_community.embeddings import OpenAIEmbeddings
+from langchain_openai import OpenAIEmbeddings
 
 OPENAI_EMBEDDING_MODEL = os.environ.get("OPENAI_EMBEDDING_MODEL")
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")

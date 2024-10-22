@@ -4,6 +4,8 @@ openai
 langchain
 langchain-community
 pgvector
-psycopg2-binary
+psycopg[binary]
 tiktoken
 dataclasses
+langchain-postgres
+langchain_openai
