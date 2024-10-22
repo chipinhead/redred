@@ -1,10 +1,42 @@
 version: '3'
 
 services:
-  fetch:
+  cli:
     build: .
     volumes:
       - ./:/app
       - ./data:/data
     command: tail -f /dev/null
+    networks:
+      - internal
+    depends_on:
+      - vectordb
+    environment:
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_PORT: ${DB_PORT}
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      DB_HOST: ${DB_HOST}
+      OPENAI_EMBEDDING_MODEL: ${OPENAI_EMBEDDING_MODEL}
+  vectordb:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - vectordb_data:/var/lib/postgresql/data
+    ports:
+      - "${DB_PORT}:5432"
+    restart: unless-stopped
+    networks:
+      - internal
+
+volumes:
+  vectordb_data:
+
+networks:
+  internal:
+    driver: bridge
 
