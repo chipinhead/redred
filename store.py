@@ -14,6 +14,7 @@ def process_reddit_data(json_file_path):
         # Normalize the data
         normalized_data = normalize_reddit_data(item)
         if not normalized_data:
+            print(f"Skipping item: {item['name']}")
             continue
 
         # Add the normalized data to the vector store
@@ -34,3 +35,4 @@ if __name__ == "__main__":
     posts = process_reddit_data(json_file_path)
     for post in posts:
         print(f"Post {post['source_id']}: {post['title']}")
+        print(f"  {post['url']}")

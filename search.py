@@ -12,9 +12,9 @@ def parse_arguments() -> argparse.Namespace:
 
 def save_posts_to_json(posts: List[Dict], query: str, subreddit: Optional[str] = None) -> None:
     if subreddit:
-        filename = f"/data/{subreddit}_{query}.json"
+        filename = f"/data/{subreddit}_{query.replace(' ', '-')}.json"
     else:
-        filename = f"/data/{query}.json"
+        filename = f"/data/{query.replace(' ', '-')}.json"
 
     data = {
         "query": query,
@@ -28,10 +28,11 @@ def save_posts_to_json(posts: List[Dict], query: str, subreddit: Optional[str] =
 def main() -> None:
     args = parse_arguments()
     posts = fetch_reddit_search_posts(args.query, args.subreddit)
+    print(posts)
     print(f"{len(posts)} posts found")
     remaining = remove_bad_posts(posts, args.remove)
     print(f"{len(remaining)} remaining after removing bad posts")
-    posts = fetch_posts([post['data']['url'] for post in remaining])
+    posts = fetch_posts([post['data']['url'] for post in posts if post['data']['url'].endswith('/')])
     
     if posts:
         save_posts_to_json(posts, args.query, args.subreddit)

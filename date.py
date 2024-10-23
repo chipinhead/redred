@@ -49,7 +49,7 @@ def main() -> None:
     print(f"{len(posts)} remaining after removing bad posts")
     posts = filter_posts_by_date(posts, target_date, tz)
     print(f"{len(posts)} were posted on {target_date.strftime('%Y-%m-%d')}")
-    posts = fetch_posts([post['data']['url'] for post in posts])
+    posts = fetch_posts([post['data']['url'] for post in posts if post['data']['url'].endswith('/')])
     date_str = target_date.strftime("%Y-%m-%d")
     
     if posts:
