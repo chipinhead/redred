@@ -8,6 +8,7 @@ def process_reddit_data(json_file_path):
     with open(json_file_path, 'r') as file:
         data = json.load(file)
 
+    posts = []
     # Process each object in the JSON array
     for item in data:
         # Normalize the data
@@ -16,9 +17,13 @@ def process_reddit_data(json_file_path):
             continue
 
         # Add the normalized data to the vector store
-        add_documents(normalized_data)
+        result = add_documents(normalized_data)
+
+        if result and normalized_data["type"] == "post":
+            posts.append(normalized_data)
 
     print(f"Processed {len(data)} items from {json_file_path}")
+    return posts
 
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -26,4 +31,6 @@ if __name__ == "__main__":
         sys.exit(1)
 
     json_file_path = sys.argv[1]
-    process_reddit_data(json_file_path)
+    posts = process_reddit_data(json_file_path)
+    for post in posts:
+        print(f"Post {post['source_id']}: {post['title']}")

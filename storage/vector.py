@@ -17,13 +17,13 @@ def add_documents(content: Dict):
     with db_session() as session:
         existing_content = session.query(RedditContent).filter(RedditContent.source_id == content["source_id"]).first()
         if existing_content:
-            return
-
-    if content["type"] == "post":
-        print(f"Storing Post: {content['title']}")
+            return False
 
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=3096, chunk_overlap=128)
     chunks = text_splitter.split_text(content["body"])
+
+    if content["type"] == "post":
+        chunks.append(content["title"])
 
     documents = []
     for i, chunk in enumerate(chunks):
@@ -50,10 +50,21 @@ def add_documents(content: Dict):
     vector_store = get_vector_store("reddit_content")
     
     # Add documents to the vector store
-    vector_store.add_documents(documents)
+    try:
+        if documents:
+            vector_store.add_documents(documents)
+    except Exception as e:
+        print(f"Error adding documents to vector store: {e}")
+        print("Documents:")
+        for doc in documents:
+            print(doc)
+        return False
+    
 
     # Log documents to the database
     log_documents(documents)
+
+    return True
 
 def ask(query: str) -> str:
     # Get the vector store
