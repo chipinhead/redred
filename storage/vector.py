@@ -50,7 +50,6 @@ def add_documents(content: Dict):
     vector_store = get_vector_store("reddit_content")
     
     # Add documents to the vector store
-    print(f"Adding {content['source_id']} documents to the vector store")
     vector_store.add_documents(documents)
 
     # Log documents to the database
