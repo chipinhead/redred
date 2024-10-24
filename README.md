@@ -21,6 +21,7 @@ The docker-compose will set up a simple python environment with the necessary de
 
 ## asking questions
 1. Run `COLLECTION_NAME=$collection_name python ask.py "your question"` (this will output the answer in the terminal)
+1a. Run `COLLECTION_NAME=$collection_name python ask.py` (will enter interactive mode where the chat history is maintained)
 
 ## example bash script to pull and store data for several subreddits and dates
 ```bash

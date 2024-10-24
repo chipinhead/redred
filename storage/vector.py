@@ -1,12 +1,12 @@
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
+from langchain.schema import Document, HumanMessage, AIMessage
 from typing import List, Dict
 from .db import get_vector_store, db_session
 from llm.model import embedding
 from langchain_openai import ChatOpenAI
 from langchain.chains import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
-from langchain.prompts import ChatPromptTemplate
+from langchain.prompts import ChatPromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate, AIMessagePromptTemplate
 from app.models import RedditContent
 from datetime import datetime
 import os
@@ -67,31 +67,46 @@ def add_documents(content: Dict):
 
     return True
 
-def ask(query: str) -> str:
-    # Get the vector store
+def ask(query: str, conversation_history: List[Dict[str, str]] = None) -> str:
     vector_store = get_vector_store(os.environ.get("COLLECTION_NAME"))
-    
-    # Create a retriever
     retriever = vector_store.as_retriever()
-
-    # Create the language model with a specific model name
     llm = ChatOpenAI(model_name="gpt-4o-mini")
 
-    # Create a prompt template
-    prompt = ChatPromptTemplate.from_template("""Answer the following question based only on the provided context:
+    # Create a system message for the prompt
+    system_template = "Answer the user's question based only on the provided context and conversation history. Do not use any external knowledge."
+    system_message_prompt = SystemMessagePromptTemplate.from_template(system_template)
 
-    Context: {context}
+    # Create a human message template for the context and query
+    human_template = """Context: {context}
 
-    Question: {input}
+        Conversation history:
+        {conversation_history}
 
-    Answer: """)
+        Current question: {input}
 
-    combine_docs_chain = create_stuff_documents_chain(llm, prompt)
+        Answer only based on the above context and conversation history:"""
+    human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
+
+    # Combine the prompts
+    chat_prompt = ChatPromptTemplate.from_messages([system_message_prompt, human_message_prompt])
+
+    # Format the conversation history
+    formatted_history = ""
+    if conversation_history:
+        for message in conversation_history:
+            if message["role"] == "user":
+                formatted_history += f"Human: {message['content']}\n"
+            elif message["role"] == "assistant":
+                formatted_history += f"AI: {message['content']}\n"
+
+    # Create and invoke the chain
+    combine_docs_chain = create_stuff_documents_chain(llm, chat_prompt)
     retrieval_chain = create_retrieval_chain(retriever, combine_docs_chain)
-    
-    # Invoke the chain
-    response = retrieval_chain.invoke({"input": query})
-    
+    response = retrieval_chain.invoke({
+        "input": query,
+        "conversation_history": formatted_history
+    })
+
     return response["answer"]
 
 def log_documents(documents: List[Document]):
