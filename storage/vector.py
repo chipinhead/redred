@@ -9,6 +9,7 @@ from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.prompts import ChatPromptTemplate
 from app.models import RedditContent
 from datetime import datetime
+import os
 
 
 
@@ -47,7 +48,7 @@ def add_documents(content: Dict):
         )
         documents.append(doc)
 
-    vector_store = get_vector_store("reddit_content")
+    vector_store = get_vector_store(os.environ.get("COLLECTION_NAME"))
     
     # Add documents to the vector store
     try:
@@ -68,7 +69,7 @@ def add_documents(content: Dict):
 
 def ask(query: str) -> str:
     # Get the vector store
-    vector_store = get_vector_store("reddit_content")
+    vector_store = get_vector_store(os.environ.get("COLLECTION_NAME"))
     
     # Create a retriever
     retriever = vector_store.as_retriever()
