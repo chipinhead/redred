@@ -46,6 +46,7 @@ def normalize_reddit_data(data):
         "score": data.get("score"),
         "likes": data.get("likes"),
         "created": int(data.get("created_utc")),
+        "sentiment_score": data.get('sentiment_score'),
     }
 
     return {k: v for k, v in normalized.items() if v is not None}

@@ -9,3 +9,4 @@ tiktoken
 dataclasses
 langchain-postgres
 langchain_openai
+vaderSentiment

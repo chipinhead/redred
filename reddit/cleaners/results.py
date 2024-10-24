@@ -20,3 +20,6 @@ def remove_bad_posts(posts: List[Dict], remove_phrases: List[str] = None) -> Lis
         filtered_posts = remove_posts_by_title(filtered_posts, remove_phrases)
     print(len(filtered_posts))
     return filtered_posts
+
+def extract_reddit_urls(posts: List[Dict]) -> List[str]:
+    return [post['data']['url'] for post in posts if "www.reddit.com" in post['data']['url'] and post['data']['url'].endswith('/')]

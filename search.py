@@ -1,8 +1,10 @@
 import argparse
 from typing import List, Dict, Any, Optional
 from reddit.requests import fetch_reddit_search_posts, fetch_posts
-from reddit.cleaners.results import remove_bad_posts
+from reddit.cleaners.results import remove_bad_posts, extract_reddit_urls
+from reddit.decorators.results import add_sentiment_scores
 import json
+
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Search Reddit for posts matching a given phrase")
     parser.add_argument("query", help="Query to search for")
@@ -32,7 +34,8 @@ def main() -> None:
     print(f"{len(posts)} posts found")
     remaining = remove_bad_posts(posts, args.remove)
     print(f"{len(remaining)} remaining after removing bad posts")
-    posts = fetch_posts([post['data']['url'] for post in posts if post['data']['url'].endswith('/')])
+    posts = fetch_posts( extract_reddit_urls(posts) )
+    posts = add_sentiment_scores(posts)
     
     if posts:
         save_posts_to_json(posts, args.query, args.subreddit)

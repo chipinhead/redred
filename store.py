@@ -34,5 +34,8 @@ if __name__ == "__main__":
     json_file_path = sys.argv[1]
     posts = process_reddit_data(json_file_path)
     for post in posts:
+        print("----------------------------------------------------------------------------------------------------`")
         print(f"Post {post['source_id']}: {post['title']}")
         print(f"  {post['url']}")
+        print(f"  Sentiment Score: {post['sentiment_score']}")
+        print("----------------------------------------------------------------------------------------------------`")

@@ -4,7 +4,8 @@ from zoneinfo import ZoneInfo
 from typing import List, Dict, Any
 import json
 from reddit.requests import fetch_reddit_new_posts, fetch_posts
-from reddit.cleaners.results import remove_bad_posts
+from reddit.cleaners.results import remove_bad_posts, extract_reddit_urls
+from reddit.decorators.results import add_sentiment_scores
 
 def parse_arguments() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Fetch posts from a specified subreddit for a given date")
@@ -49,7 +50,8 @@ def main() -> None:
     print(f"{len(posts)} remaining after removing bad posts")
     posts = filter_posts_by_date(posts, target_date, tz)
     print(f"{len(posts)} were posted on {target_date.strftime('%Y-%m-%d')}")
-    posts = fetch_posts([post['data']['url'] for post in posts if post['data']['url'].endswith('/')])
+    posts = fetch_posts( extract_reddit_urls(posts) )
+    posts = add_sentiment_scores(posts)
     date_str = target_date.strftime("%Y-%m-%d")
     
     if posts:
