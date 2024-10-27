@@ -6,7 +6,7 @@ services:
     volumes:
       - ./:/app
       - ./data:/data
-    command: tail -f /dev/null
+    entrypoint: [ "tail", "-f", "/dev/null" ]
     networks:
       - internal
     depends_on:

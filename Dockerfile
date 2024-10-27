@@ -1,11 +1,11 @@
-# Use an official Python runtime as a parent image
-FROM python:3.9-slim
+# Start with the AWS Lambda Python 3.9 base image
+FROM public.ecr.aws/lambda/python:3.9
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    libpq-dev \
+RUN yum update -y && yum install -y \
+    postgresql-devel \
     gcc \
-    && rm -rf /var/lib/apt/lists/*
+    && yum clean all
 
 # Set the working directory in the container
 WORKDIR /app
